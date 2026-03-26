@@ -230,9 +230,9 @@ if __name__ == "__main__":
     
     # Test message forwarding decisions
     test_cases = [
-        ("msg_1", priority=2.5, rssi_dbm=-45),  # high priority, strong signal
-        ("msg_2", priority=1.8, rssi_dbm=-70),  # low priority, weak signal
-        ("msg_3", priority=3.0, rssi_dbm=-65),  # critical, medium signal
+        ("msg_1", 2.5, -45),  # high priority, strong signal
+        ("msg_2", 1.8, -70),  # low priority, weak signal
+        ("msg_3", 3.0, -65),  # critical, medium signal
     ]
     
     for msg_id, priority, rssi in test_cases:
