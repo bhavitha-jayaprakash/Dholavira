@@ -1,8 +1,25 @@
 # ECHO / Adrishya (Human‑Mesh Bharat)
 
-Disaster communications stack that works with **zero infrastructure** in the blast radius, then progressively “climbs” out of the dead zone using **BLE/Wi‑Fi Direct → LoRa → vehicular DTN → cloud triage**.
+Disaster communications stack that works with **zero infrastructure** in the blast radius, then progressively "climbs" out of the dead zone using **BLE/Wi‑Fi Direct → LoRa → vehicular DTN → cloud triage**.
 
 This repo is the **no-loss engineering blueprint** plus a **working reference backend** you can run locally (PostGIS + signature verification + ingestion).
+
+---
+
+## 📖 **Documentation**
+
+👉 **[Complete Documentation Index](docs/INDEX.md)** — Start here for navigation
+
+**Quick links:**
+- **Getting started?** → [Quickstart Guide](docs/guides/quickstart.md)
+- **Backend questions?** → [Requirements & Architecture](docs/architecture/REQUIREMENTS.md)
+- **Resource allocation?** → [Allocation Docs](docs/allocation/)
+- **Mobile (Flutter)?** → [Battery Integration](docs/battery/)
+- **Production deployment?** → [Allocation v2 Status](docs/allocation/ALLOCATION_V2_STATUS.md)
+
+All documentation organized in `/docs` directory. See [Documentation README](docs/README.md).
+
+---
 
 ## What this is (4-layer Hybrid DTN)
 
@@ -26,7 +43,7 @@ This repo is the **no-loss engineering blueprint** plus a **working reference ba
 ### Layer 4 — Command Gateway (cloud + triage)
 
 - Nodes: Cloud service + PostGIS + dashboard.
-- Behavior: Verify signatures, dedupe, spatial indexing, heatmaps, CAP alert downlink.
+- Behavior: Verify signatures, dedupe, spatial indexing, heatmaps, CAP alert downlink, **resource allocation** (warehouses → hospitals, robust margins, scenario planning).
 
 ## Non‑negotiable constraints
 
@@ -35,6 +52,74 @@ This repo is the **no-loss engineering blueprint** plus a **working reference ba
 - **Cryptographically authenticated**: reject spoofed SOS.
 - **Works offline-first**: phones + edge nodes must function without DNS/internet.
 
+---
+
+## Resource allocation (Layer 4 triage)
+
+Given ingested SOS + known supply/demand, the backend computes **robust supply routing** across scenarios (e.g., road damage, demand spike, node outage).
+
+See `ALLOCATION.md` for:
+
+- Multi-tier network model (warehouses, hubs, hospitals, shelters, routes).
+- Scenario-based planning + human-in-the-loop (HITL) overrides.
+- Robust margins + explanations.
+- Integration with SOS ingest.
+
+## Three-module architecture
+
+### 1. Communication (DTN + relay)
+Layers 1–3: BLE mesh → LoRa sentinels → vehicular DTN. See `MODULES.md`.
+
+### 2. Battery optimization (on-device + cloud-side)
+- **On-device**: LoRa CAD duty-cycling (2.9s sleep / 0.1s sniff = 97% power savings), RSSI-based suppression.
+- **Cloud-side**: track device power state (CRITICAL/LOW/MEDIUM/GOOD) and deprioritize low-battery nodes in allocation.
+- **Flutter endpoints**: `/v1/device/battery/:device_id`, `/v1/optimize/config`, `/v1/stats/battery/record`.
+
+See `FLUTTER_BATTERY_INTEGRATION.md` for full mobile integration guide.
+
+### 3. Resource allocation (supply routing)
+
+**v1 (Legacy)**: Greedy tier-based algorithm for basic scenarios.  
+**v2 (Advanced, NEW)**: Linear Programming optimization with multi-scenario planning.
+
+Both versions available concurrently:
+- `POST /v1/allocate` — v1 greedy algorithm (unchanged, 10-15ms)
+- `POST /v1/allocate/v2` — v2 LP optimization (50-150ms, 20-30% better unmet demand)
+- `POST /v1/allocate/compare` — compare both versions
+
+**v2 Features**:
+- Multi-scenario robust planning (worst-case analysis)
+- Vehicle-aware routing (truck/bike/drone degradation)
+- Rolling horizon multi-period planning
+- Human-in-the-loop overrides (priorities, forcing)
+- 5-minute intelligent caching
+
+**Performance**: v2 reduces unmet demand by 20-30% vs v1. Suitable for complex disaster zones where supply optimization is critical.
+
+See `ALLOCATION_V2.md` for API reference, `ALLOCATION_MIGRATION.md` for gradual rollout plan.
+
+## Mobile (Flutter/Android) Integration
+
+The backend provides **battery-aware APIs** for Flutter apps running on affected-area phones:
+
+**Key endpoints**:
+- `GET /v1/device/battery/:device_id` — cloud's view of device battery + recommendations
+- `GET /v1/optimize/config?power_state=...` — power-saving parameters (RSSI thresholds, CAD cycles, retention)
+- `POST /v1/stats/battery/record` — device sends battery stats for analytics
+- `GET /v1/admin/battery-status` — ops dashboard (network-wide battery health)
+
+**Power states**:
+- **CRITICAL** (<5%): suppress non-emergency messages; 1h retention
+- **LOW** (5–20%): selective forwarding; 24h retention
+- **MEDIUM** (20–60%): balanced relay; 3d retention
+- **GOOD** (>60%): normal operation; 7d retention
+
+Flutter apps use these endpoints to:
+1. Fetch cloud's battery estimation + optimization config
+2. Apply CAD sleep/sniff tuning, RSSI thresholds, message suppression locally
+3. Send battery stats periodically for dashboard analytics
+
+See `FLUTTER_BATTERY_INTEGRATION.md` for detailed implementation patterns, code examples, and best practices.
 
 ---
 

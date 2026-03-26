@@ -1,0 +1,477 @@
+openapi: 3.0.3
+info:
+  title: DRI & CA — Disaster Resilience Intelligence API
+  description: |
+    Backend API for the Disaster Resilience Intelligence & Community Awareness module.
+    Provides spatial feasibility checks (PostGIS), explainable AI remediation recommendations,
+    semantic jargon simplification, Bhashini NMT/TTS translation, community alerts, and
+    seasonal disaster preparedness tips.
+
+    **Key Features:**
+    - PostGIS spatial intersection queries against KSDMA flood and NCESS landslide hazard zones
+    - Explainable AI (XAI) engine with transparent reasoning chains and source citations
+    - Deterministic jargon simplification (no LLM dependency)
+    - Bhashini Neural Machine Translation (English ↔ Malayalam) with TTS
+    - Community-sourced disaster alerts with verification workflow
+    - Seasonal awareness tips from KSDMA guidelines
+
+    **Tech Stack:** Node.js (ESM) · Express · PostgreSQL + PostGIS
+  version: 1.0.0
+  contact:
+    name: DRI & CA Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:4000
+    description: Local development
+
+tags:
+  - name: Health
+    description: Server status and connectivity checks
+  - name: Feasibility
+    description: Site feasibility assessment via PostGIS spatial queries
+  - name: Zones
+    description: Hazard zone data with GeoJSON geometries
+  - name: Remediation
+    description: Explainable AI structural recommendations
+  - name: Simplify
+    description: Technical jargon simplification engine
+  - name: Translate
+    description: Bhashini NMT/TTS Indian language translation
+  - name: Alerts
+    description: Community-sourced disaster alerts
+  - name: Tips
+    description: Seasonal disaster preparedness tips
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [Health]
+      summary: Server health check
+      description: Returns server status, database connectivity, and available endpoints.
+      responses:
+        '200':
+          description: Server is operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      service: { type: string, example: "DRI & CA API" }
+                      version: { type: string, example: "1.0.0" }
+                      status: { type: string, example: "operational" }
+                      database: { type: string, enum: [connected, disconnected] }
+
+  /api/v1/feasibility:
+    post:
+      tags: [Feasibility]
+      summary: Run site feasibility check
+      description: |
+        Accepts GPS coordinates and building type. Runs PostGIS ST_Intersects queries
+        against flood and landslide hazard zones. Returns risk assessment with matched zones.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [latitude, longitude, buildingType]
+              properties:
+                latitude:
+                  type: number
+                  minimum: -90
+                  maximum: 90
+                  example: 10.0889
+                  description: GPS latitude (WGS84)
+                longitude:
+                  type: number
+                  minimum: -180
+                  maximum: 180
+                  example: 76.3910
+                  description: GPS longitude (WGS84)
+                buildingType:
+                  type: string
+                  enum: [residential, commercial, industrial, institutional, agricultural]
+                  example: residential
+      responses:
+        '200':
+          description: Feasibility assessment result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      checkId: { type: integer }
+                      overallRisk: { type: string, enum: [none, low, moderate, high, very_high, catastrophic] }
+                      floodRisk:
+                        type: object
+                        properties:
+                          found: { type: boolean }
+                          count: { type: integer }
+                          zones: { type: array }
+                      landslideRisk:
+                        type: object
+                        properties:
+                          found: { type: boolean }
+                          count: { type: integer }
+                          zones: { type: array }
+                      coastalRisk:
+                        type: object
+                        properties:
+                          found: { type: boolean }
+                          count: { type: integer }
+                          zones: { type: array }
+                      seismicRisk:
+                        type: object
+                        properties:
+                          found: { type: boolean }
+                          count: { type: integer }
+                          zones: { type: array }
+                      historicProximity:
+                        type: object
+                        properties:
+                          found: { type: boolean }
+                          count: { type: integer }
+                          events: { type: array }
+        '400':
+          description: Validation error
+
+  /api/v1/feasibility/history:
+    get:
+      tags: [Feasibility]
+      summary: Paginated history of feasibility checks
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        '200':
+          description: List of past checks with pagination metadata
+
+  /api/v1/feasibility/{id}:
+    get:
+      tags: [Feasibility]
+      summary: Retrieve a past feasibility check by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Feasibility check details
+        '404':
+          description: Check not found
+
+  /api/v1/zones/flood:
+    get:
+      tags: [Zones]
+      summary: List all flood hazard zones
+      description: Returns all flood zones with GeoJSON geometry for map rendering.
+      responses:
+        '200':
+          description: Array of flood zones with geometry
+
+  /api/v1/zones/landslide:
+    get:
+      tags: [Zones]
+      summary: List all landslide susceptibility zones
+      description: Returns all landslide zones with GeoJSON geometry for map rendering.
+      responses:
+        '200':
+          description: Array of landslide zones with geometry
+
+  /api/v1/zones/stats:
+    get:
+      tags: [Zones]
+      summary: Aggregate zone statistics
+      description: Returns counts by risk level, affected districts, and check statistics.
+      responses:
+        '200':
+          description: Aggregated statistics
+
+  /api/v1/remediation:
+    post:
+      tags: [Remediation]
+      summary: Generate XAI remediation recommendations
+      description: |
+        Generates explainable structural remediation recommendations based on a feasibility
+        assessment. Accepts either a `checkId` (from a previous feasibility check) or direct
+        risk parameters. Returns recommendations with full XAI reasoning chain.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [checkId]
+                  properties:
+                    checkId:
+                      type: integer
+                      description: ID of a previous feasibility check
+                      example: 1
+                - type: object
+                  required: [buildingType, overallRisk]
+                  properties:
+                    buildingType: { type: string, example: residential }
+                    overallRisk: { type: string, example: high }
+                    latitude: { type: number, example: 10.0889 }
+                    longitude: { type: number, example: 76.3910 }
+                    floodRisk:
+                      type: object
+                      properties:
+                        found: { type: boolean }
+                        zones: { type: array }
+                    landslideRisk:
+                      type: object
+                      properties:
+                        found: { type: boolean }
+                        zones: { type: array }
+                    coastalRisk:
+                      type: object
+                      properties:
+                        found: { type: boolean }
+                        zones: { type: array }
+                    seismicRisk:
+                      type: object
+                      properties:
+                        found: { type: boolean }
+                        zones: { type: array }
+      responses:
+        '200':
+          description: XAI remediation report with reasoning chain
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      summary: { type: string }
+                      recommendations: { type: array }
+                      xai:
+                        type: object
+                        description: Explainability metadata
+                        properties:
+                          engine_version: { type: string }
+                          method: { type: string }
+                          reasoning_chain: { type: array }
+                          transparency_note: { type: string }
+
+  /api/v1/remediation/guidelines:
+    get:
+      tags: [Remediation]
+      summary: Full remediation knowledge base
+      description: Returns all remediation rules for audit and reference purposes.
+      responses:
+        '200':
+          description: Complete knowledge base with sources
+
+  /api/v1/simplify:
+    post:
+      tags: [Simplify]
+      summary: Simplify technical text
+      description: |
+        Replaces civil engineering and geotechnical jargon with layperson language
+        using a deterministic glossary engine. Returns original text, simplified text,
+        and a list of all term replacements made.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 10000
+                  example: "Implement dynamic earth pressure retaining walls and deep soil nailing to mitigate pore-water pressure."
+      responses:
+        '200':
+          description: Simplified text with replacement details
+
+  /api/v1/simplify/glossary:
+    get:
+      tags: [Simplify]
+      summary: Full domain glossary
+      description: Returns all technical terms and their simplified equivalents.
+      responses:
+        '200':
+          description: Array of glossary entries
+
+  /api/v1/translate:
+    post:
+      tags: [Translate]
+      summary: Translate text via Bhashini NMT
+      description: |
+        Translates text between languages using Bhashini Neural Machine Translation.
+        Default: English → Malayalam. Returns mock data if API credentials are not configured.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 5000 }
+                sourceLang: { type: string, default: en, example: en }
+                targetLang: { type: string, default: ml, example: ml }
+      responses:
+        '200':
+          description: Translation result
+
+  /api/v1/translate/tts:
+    post:
+      tags: [Translate]
+      summary: Text-to-Speech via Bhashini TTS
+      description: Converts text to speech audio (base64-encoded WAV).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 2000 }
+                lang: { type: string, default: ml }
+                gender: { type: string, enum: [male, female], default: female }
+      responses:
+        '200':
+          description: TTS result with audioContent (base64)
+
+  /api/v1/translate/languages:
+    get:
+      tags: [Translate]
+      summary: Supported languages and config status
+      responses:
+        '200':
+          description: Language pairs and API configuration status
+
+  /api/v1/alerts:
+    post:
+      tags: [Alerts]
+      summary: Create a community alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description, alert_type, severity, district]
+              properties:
+                title: { type: string, minLength: 5, maxLength: 200 }
+                description: { type: string, minLength: 10, maxLength: 2000 }
+                alert_type: { type: string, enum: [flood, landslide, heavy_rain, cyclone, earthquake, tsunami, dam_release, road_block, evacuation, relief_camp, general] }
+                severity: { type: string, enum: [info, advisory, warning, critical] }
+                district: { type: string, example: Wayanad }
+                latitude: { type: number }
+                longitude: { type: number }
+                reported_by: { type: string, default: anonymous }
+      responses:
+        '201':
+          description: Alert created
+    get:
+      tags: [Alerts]
+      summary: List active community alerts
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string }
+          description: Filter by alert_type
+        - name: district
+          in: query
+          schema: { type: string }
+          description: Filter by district
+        - name: severity
+          in: query
+          schema: { type: string }
+          description: Filter by severity
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Paginated list of alerts
+
+  /api/v1/alerts/{id}:
+    get:
+      tags: [Alerts]
+      summary: Get alert details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Alert details
+        '404':
+          description: Alert not found
+
+  /api/v1/alerts/{id}/verify:
+    patch:
+      tags: [Alerts]
+      summary: Mark alert as verified
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Alert verified
+
+  /api/v1/tips/current:
+    get:
+      tags: [Tips]
+      summary: Tips for the current season
+      description: Returns disaster preparedness tips based on the current month.
+      responses:
+        '200':
+          description: Current season tips
+
+  /api/v1/tips/seasons:
+    get:
+      tags: [Tips]
+      summary: Overview of all seasons
+      responses:
+        '200':
+          description: Array of season summaries
+
+  /api/v1/tips/{season}:
+    get:
+      tags: [Tips]
+      summary: Tips for a specific season
+      parameters:
+        - name: season
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [pre_monsoon, monsoon, post_monsoon, dry_season]
+      responses:
+        '200':
+          description: Season-specific tips
+        '400':
+          description: Invalid season name

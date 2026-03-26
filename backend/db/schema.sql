@@ -55,3 +55,37 @@ CREATE INDEX IF NOT EXISTS event_logs_ts_idx ON event_logs (ts DESC);
 CREATE INDEX IF NOT EXISTS event_logs_event_idx ON event_logs (event);
 CREATE INDEX IF NOT EXISTS event_logs_req_id_idx ON event_logs (req_id);
 CREATE INDEX IF NOT EXISTS event_logs_msg_id_hex_idx ON event_logs (msg_id_hex);
+
+CREATE TABLE IF NOT EXISTS device_battery_state (
+  device_id TEXT PRIMARY KEY,
+  battery_pct SMALLINT NOT NULL,
+  power_state TEXT NOT NULL,  -- CRITICAL, LOW, MEDIUM, GOOD
+  last_seen_ts TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_sos_msg_id TEXT,
+  
+  -- Cloud's view of device optimization
+  should_suppress_rebroadcast BOOLEAN DEFAULT FALSE,
+  recommended_message_retention_sec INTEGER DEFAULT 604800  -- 7 days
+);
+
+CREATE INDEX IF NOT EXISTS device_battery_state_last_seen_idx ON device_battery_state (last_seen_ts DESC);
+CREATE INDEX IF NOT EXISTS device_battery_state_power_state_idx ON device_battery_state (power_state);
+
+CREATE TABLE IF NOT EXISTS battery_optimization_stats (
+  stat_id BIGSERIAL PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  ts TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  battery_pct SMALLINT,
+  power_state TEXT,
+  messages_suppressed INTEGER DEFAULT 0,
+  messages_forwarded INTEGER DEFAULT 0,
+  lora_cad_cycles_completed INTEGER DEFAULT 0,
+  estimated_power_saved_pct REAL,  -- vs always-listening
+  
+  details JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS battery_optimization_stats_device_idx ON battery_optimization_stats (device_id);
+CREATE INDEX IF NOT EXISTS battery_optimization_stats_ts_idx ON battery_optimization_stats (ts DESC);
+

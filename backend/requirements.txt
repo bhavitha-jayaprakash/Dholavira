@@ -1,0 +1,22 @@
+# Python requirements for resource allocation and battery optimization modules
+#
+# These modules run on the cloud backend (disaster_alloc.py, battery_optimization.py)
+# and can be called from the Node.js backend via subprocess or direct Python embedding.
+
+# No external dependencies required for allocation/battery modules themselves.
+# They use only Python standard library:
+# - json (disaster_alloc.py)
+# - random (disaster_alloc.py)
+# - copy (disaster_alloc.py)
+# - enum (battery_optimization.py)
+# - dataclasses (battery_optimization.py)
+
+# If integrating with the Node.js backend via subprocess or API:
+# - requests >= 2.28.0 (for HTTP calls from Python to backend)
+# - (optional) pandas >= 1.5.0 (for data analysis / scenario generation)
+# - (optional) flask >= 2.3.0 (if running Python allocation as separate microservice)
+
+# Development / testing:
+# - pytest >= 7.0.0 (unit tests)
+# - black >= 23.0.0 (code formatting)
+# - pylint >= 2.16.0 (linting)

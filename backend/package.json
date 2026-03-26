@@ -12,11 +12,14 @@
     "db:migrate": "node scripts/migrate.mjs",
     "logs:show": "node scripts/show_logs.mjs",
     "proof": "node scripts/proof.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "send:sos": "node src/send_sos.mjs",
+    "allocate:example": "python3 src/allocation_example.py"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "minimist": "^1.2.8",
     "pg": "^8.12.0",
     "tweetnacl": "^1.0.3"
   }
