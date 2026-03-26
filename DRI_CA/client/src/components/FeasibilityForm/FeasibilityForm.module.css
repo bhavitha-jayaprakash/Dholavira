@@ -1,0 +1,186 @@
+/* ─── FeasibilityForm Component ─── */
+
+.form {
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-xl);
+  animation: fadeInUp 0.5s ease both;
+}
+
+.formHeader {
+  margin-bottom: var(--space-xl);
+}
+
+.formTitle {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-xs);
+}
+
+.formSubtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* ─── Fields ─── */
+.coordRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.label {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-primary-dark);
+}
+
+.input,
+.select {
+  padding: 0.75rem 1rem;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  background: var(--color-bg);
+  transition: all var(--transition-fast);
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(212, 163, 115, 0.2);
+  background: var(--color-surface);
+}
+
+.input::placeholder {
+  color: var(--color-text-light);
+}
+
+.select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232D3436' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+/* ─── Location Button ─── */
+.locationBtn {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  margin-bottom: var(--space-md);
+  background: var(--color-bg-alt);
+  border: var(--border-width) dashed var(--color-accent);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.locationBtn:hover:not(:disabled) {
+  background: var(--color-accent-light);
+  border-style: solid;
+  box-shadow: var(--shadow-sm);
+  transform: translate(-1px, -1px);
+}
+
+.locationBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ─── Error ─── */
+.error {
+  padding: 0.75rem 1rem;
+  background: var(--color-danger-bg);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--space-md);
+  animation: fadeIn 0.3s ease;
+}
+
+/* ─── Submit Button ─── */
+.submitBtn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--color-primary-light);
+  box-shadow: var(--shadow-lg);
+  transform: translate(-2px, -2px);
+}
+
+.submitBtn:active:not(:disabled) {
+  box-shadow: var(--shadow-sm);
+  transform: translate(0, 0);
+}
+
+.submitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ─── Spinner ─── */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+  .coordRow {
+    grid-template-columns: 1fr;
+  }
+
+  .form {
+    padding: var(--space-lg);
+  }
+}
