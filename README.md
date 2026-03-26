@@ -1,8 +1,25 @@
 # ECHO / Adrishya (Human‑Mesh Bharat)
 
-Disaster communications stack that works with **zero infrastructure** in the blast radius, then progressively “climbs” out of the dead zone using **BLE/Wi‑Fi Direct → LoRa → vehicular DTN → cloud triage**.
+Disaster communications stack that works with **zero infrastructure** in the blast radius, then progressively "climbs" out of the dead zone using **BLE/Wi‑Fi Direct → LoRa → vehicular DTN → cloud triage**.
 
 This repo is the **no-loss engineering blueprint** plus a **working reference backend** you can run locally (PostGIS + signature verification + ingestion).
+
+---
+
+## 📖 **Documentation**
+
+👉 **[Complete Documentation Index](docs/INDEX.md)** — Start here for navigation
+
+**Quick links:**
+- **Getting started?** → [Quickstart Guide](docs/guides/quickstart.md)
+- **Backend questions?** → [Requirements & Architecture](docs/architecture/REQUIREMENTS.md)
+- **Resource allocation?** → [Allocation Docs](docs/allocation/)
+- **Mobile (Flutter)?** → [Battery Integration](docs/battery/)
+- **Production deployment?** → [Allocation v2 Status](docs/allocation/ALLOCATION_V2_STATUS.md)
+
+All documentation organized in `/docs` directory. See [Documentation README](docs/README.md).
+
+---
 
 ## What this is (4-layer Hybrid DTN)
 
