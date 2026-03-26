@@ -42,10 +42,13 @@ app.use((req, res, next) => {
 app.get('/healthz', async (_req, res) => {
   try {
     const result = await pool.query('SELECT 1 AS ok');
-    res.json({ ok: result.rows?.[0]?.ok === 1 });
+    res.json({
+      ok: result.rows?.[0]?.ok === 1,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err) {
     await logger.error({ event: 'healthz_error', error: String(err) });
-    res.status(500).json({ ok: false, error: String(err) });
+    res.status(500).json({ ok: false, error: String(err), timestamp: new Date().toISOString() });
   }
 });
 
