@@ -1,0 +1,12 @@
+node_modules/
+.env
+
+.DS_Store
+
+# Logs / pids
+*.log
+*.pid
+
+# Coverage
+coverage/
+.nyc_output/
