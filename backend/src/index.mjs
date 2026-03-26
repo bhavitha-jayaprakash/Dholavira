@@ -7,6 +7,7 @@ import { parseSosPayloadV1 } from './sosPayloadV1.mjs';
 import { verifyEd25519 } from './ed25519.mjs';
 import { createLogger } from './logger.mjs';
 import { BatteryOptimizationManager } from './batteryManager.mjs';
+import allocationV2 from './allocationWrapper.mjs';
 
 dotenv.config();
 
@@ -400,6 +401,135 @@ app.post('/v1/stats/battery/record', async (req, res) => {
       error: String(err)
     });
     res.status(500).json({ error: 'db_error', details: String(err) });
+  }
+});
+
+/**
+ * Allocation v2 Endpoints
+ * POST /v1/allocate/v2 - Run advanced allocation
+ * POST /v1/allocate/compare - Compare v1 vs v2 results
+ */
+
+app.post('/v1/allocate/v2', async (req, res) => {
+  try {
+    const { nodes, edges, scenarios, mode = 'static', rolling_steps = 1, hitl_overrides } = req.body;
+    
+    if (!Array.isArray(nodes) || !Array.isArray(edges) || !Array.isArray(scenarios)) {
+      await logger.warn({
+        event: 'allocate_v2_rejected',
+        reason: 'missing_fields',
+        req_id: req.reqId
+      });
+      return res.status(422).json({ error: 'missing_fields', details: 'nodes, edges, scenarios arrays required' });
+    }
+
+    const result = await allocationV2.allocate({
+      nodes,
+      edges,
+      scenarios,
+      mode,
+      rolling_steps,
+      hitl_overrides
+    });
+
+    await logger.info({
+      event: 'allocate_v2_success',
+      req_id: req.reqId,
+      flows: result.flows?.length || 0,
+      scenarios: scenarios.length,
+      mode
+    });
+
+    res.json({
+      version: 'v2',
+      status: 'success',
+      ...result,
+      _metadata: {
+        timestamp: new Date().toISOString(),
+        mode,
+        req_id: req.reqId
+      }
+    });
+  } catch (err) {
+    await logger.error({
+      event: 'allocate_v2_error',
+      req_id: req.reqId,
+      error: String(err)
+    });
+    res.status(500).json({
+      version: 'v2',
+      status: 'error',
+      error: String(err),
+      flows: [],
+      active_nodes: [],
+      critical_routes: [],
+      unmet_demand: [],
+      explanations: [],
+      robust_margin: {}
+    });
+  }
+});
+
+app.post('/v1/allocate/compare', async (req, res) => {
+  try {
+    const { nodes, edges, scenarios, rolling_steps = 1, hitl_overrides } = req.body;
+    
+    if (!Array.isArray(nodes) || !Array.isArray(edges) || !Array.isArray(scenarios)) {
+      await logger.warn({
+        event: 'allocate_compare_rejected',
+        reason: 'missing_fields',
+        req_id: req.reqId
+      });
+      return res.status(422).json({ error: 'missing_fields', details: 'nodes, edges, scenarios arrays required' });
+    }
+
+    // Get v2 result
+    const v2Result = await allocationV2.allocate({
+      nodes,
+      edges,
+      scenarios,
+      mode: 'static',
+      rolling_steps,
+      hitl_overrides
+    });
+
+    // Get v1 result for comparison (from legacy allocator if available)
+    // For now, we'll just note that v1 comparison would go here
+    const comparison = allocationV2.compareResults(
+      { flows: [], active_nodes: [], unmet_demand: {}, critical_routes: [] },
+      v2Result
+    );
+
+    await logger.info({
+      event: 'allocate_compare_success',
+      req_id: req.reqId,
+      v2_flows: v2Result.flows?.length || 0,
+      recommendation: comparison.recommendation
+    });
+
+    res.json({
+      version: 'comparison',
+      status: 'success',
+      v2_result: v2Result,
+      comparison_metrics: comparison,
+      _metadata: {
+        timestamp: new Date().toISOString(),
+        req_id: req.reqId
+      }
+    });
+  } catch (err) {
+    await logger.error({
+      event: 'allocate_compare_error',
+      req_id: req.reqId,
+      error: String(err)
+    });
+    res.status(500).json({
+      version: 'comparison',
+      status: 'error',
+      error: String(err),
+      v2_result: {},
+      comparison_metrics: {}
+    });
   }
 });
 
