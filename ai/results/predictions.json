@@ -1,0 +1,37 @@
+[
+  {
+    "Location": "Kochi, Kerala",
+    "Flood": 1.0,
+    "Landslide": 0.417,
+    "Cyclone": 0.973,
+    "Action": "\ud83d\udea8 EVACUATE IMMEDIATELY"
+  },
+  {
+    "Location": "Manali, Himachal Pradesh",
+    "Flood": 0.994,
+    "Landslide": 0.999,
+    "Cyclone": 0.016,
+    "Action": "\ud83d\udea8 EVACUATE IMMEDIATELY"
+  },
+  {
+    "Location": "Puri, Odisha",
+    "Flood": 0.999,
+    "Landslide": 0.007,
+    "Cyclone": 1.0,
+    "Action": "\ud83d\udea8 EVACUATE IMMEDIATELY"
+  },
+  {
+    "Location": "Jaisalmer, Rajasthan",
+    "Flood": 0.966,
+    "Landslide": 0.002,
+    "Cyclone": 0.004,
+    "Action": "\ud83d\udea8 EVACUATE IMMEDIATELY"
+  },
+  {
+    "Location": "Thane, Maharashtra",
+    "Flood": 1.0,
+    "Landslide": 0.395,
+    "Cyclone": 0.838,
+    "Action": "\ud83d\udea8 EVACUATE IMMEDIATELY"
+  }
+]

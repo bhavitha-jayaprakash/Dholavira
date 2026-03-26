@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DisasterAI – India Risk Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ───── RESET & BASE ───── */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#060b18; --card:#0d1428; --card2:#111827;
+  --border:#1e2d4a; --text:#c9d8f0; --muted:#5a7094;
+  --cyan:#00d4ff; --cyan2:#00a8cc;
+  --safe:#00e676; --moderate:#ff9800; --warning:#ffeb3b; --danger:#ff1744;
+  --safe-bg:rgba(0,230,118,.08); --mod-bg:rgba(255,152,0,.08);
+  --warn-bg:rgba(255,235,59,.08); --danger-bg:rgba(255,23,68,.08);
+}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+
+/* ───── SCREENS ───── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .5s;}
+.screen.active{opacity:1;pointer-events:all;}
+
+/* ───────────────────────────────────────────────────────
+   SCREEN 1 – MAP
+─────────────────────────────────────────────────────── */
+#screen-map header{
+  display:flex;align-items:center;gap:12px;padding:14px 24px;
+  background:rgba(6,11,24,.9);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);z-index:1000;position:relative;
+}
+.logo-icon{font-size:24px;}
+.logo-text{font-size:18px;font-weight:700;letter-spacing:.5px;
+  background:linear-gradient(135deg,var(--cyan),#a78bfa);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo-sub{font-size:11px;color:var(--muted);margin-left:auto;letter-spacing:.8px;text-transform:uppercase;}
+
+#map{flex:1;z-index:1;}
+
+/* Leaflet dark popup override */
+.leaflet-popup-content-wrapper{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:12px;}
+.leaflet-popup-tip{background:var(--card);}
+
+#location-panel{
+  background:rgba(6,11,24,.95);backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);padding:16px 24px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  min-height:80px;z-index:1000;
+}
+.loc-info{flex:1;}
+.loc-placeholder{color:var(--muted);font-size:14px;display:flex;align-items:center;gap:8px;}
+.loc-placeholder::before{content:'📍';font-size:18px;}
+.loc-name{font-size:16px;font-weight:600;color:#fff;margin-bottom:2px;}
+.loc-coords{font-size:12px;color:var(--muted);font-family:monospace;}
+
+#btn-analyze{
+  padding:13px 32px;border-radius:12px;border:none;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:700;
+  background:linear-gradient(135deg,var(--cyan),var(--cyan2));
+  color:#000;letter-spacing:.5px;
+  box-shadow:0 0 0 0 rgba(0,212,255,.4);
+  transition:all .3s;opacity:.4;pointer-events:none;
+}
+#btn-analyze.ready{opacity:1;pointer-events:all;animation:pulse-btn 2s infinite;}
+#btn-analyze:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,212,255,.35);}
+#btn-analyze.ready:active{transform:scale(.97);}
+@keyframes pulse-btn{
+  0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.4);}
+  50%{box-shadow:0 0 0 12px rgba(0,212,255,0);}
+}
+
+/* Custom map pin pulse */
+.pin-pulse{
+  width:16px;height:16px;border-radius:50%;background:var(--cyan);
+  box-shadow:0 0 0 0 rgba(0,212,255,.6);animation:map-pulse 1.5s infinite;
+}
+@keyframes map-pulse{
+  0%{box-shadow:0 0 0 0 rgba(0,212,255,.7);}
+  70%{box-shadow:0 0 0 14px rgba(0,212,255,0);}
+  100%{box-shadow:0 0 0 0 rgba(0,212,255,0);}
+}
+
+/* ───────────────────────────────────────────────────────
+   SCREEN 2 – LOADER
+─────────────────────────────────────────────────────── */
+#screen-loader{
+  align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center, #0a1628 0%,var(--bg) 70%);
+}
+.solar-system{position:relative;width:220px;height:220px;margin-bottom:40px;}
+
+/* planet */
+.planet{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:70px;height:70px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#4fc3f7 0%,#1565c0 50%,#0a1628 100%);
+  box-shadow:0 0 40px rgba(79,195,247,.45),0 0 80px rgba(21,101,192,.2);
+  animation:planet-breathe 3s ease-in-out infinite;
+}
+@keyframes planet-breathe{
+  0%,100%{box-shadow:0 0 40px rgba(79,195,247,.45),0 0 80px rgba(21,101,192,.2);}
+  50%{box-shadow:0 0 60px rgba(79,195,247,.7),0 0 100px rgba(21,101,192,.4);}
+}
+
+/* India silhouette on planet */
+.planet::after{
+  content:'🇮🇳';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);font-size:24px;opacity:.7;
+}
+
+/* radar rings */
+.ring{
+  position:absolute;top:50%;left:50%;border-radius:50%;
+  border:1.5px solid var(--cyan);transform:translate(-50%,-50%);
+  animation:ring-expand 2.4s ease-out infinite;
+}
+.ring:nth-child(2){animation-delay:.6s;}
+.ring:nth-child(3){animation-delay:1.2s;}
+.ring:nth-child(4){animation-delay:1.8s;}
+@keyframes ring-expand{
+  0%{width:80px;height:80px;opacity:.8;}
+  100%{width:220px;height:220px;opacity:0;}
+}
+
+/* satellite orbit */
+.orbit-track{
+  position:absolute;top:50%;left:50%;
+  width:160px;height:160px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  border:1px dashed rgba(0,212,255,.2);
+  animation:spin 4s linear infinite;
+}
+@keyframes spin{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
+.satellite{
+  position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+  font-size:22px;filter:drop-shadow(0 0 8px var(--cyan));
+}
+
+/* steps */
+.loader-steps{text-align:center;}
+.step-text{
+  font-size:16px;font-weight:500;color:var(--cyan);
+  min-height:28px;transition:opacity .3s;letter-spacing:.3px;
+}
+.step-bar-wrap{
+  width:260px;height:4px;background:var(--border);border-radius:4px;
+  margin:16px auto 0;overflow:hidden;
+}
+.step-bar{
+  height:100%;background:linear-gradient(90deg,var(--cyan),#a78bfa);
+  border-radius:4px;width:0%;transition:width .6s ease;
+}
+.step-sub{font-size:12px;color:var(--muted);margin-top:10px;letter-spacing:.5px;}
+
+/* ───────────────────────────────────────────────────────
+   SCREEN 3 – RESULTS
+─────────────────────────────────────────────────────── */
+#screen-results{
+  overflow-y:auto;
+  background:var(--bg);
+}
+.results-wrap{max-width:1000px;margin:0 auto;padding:24px 20px 40px;}
+
+.res-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px;}
+.res-loc h2{font-size:22px;font-weight:700;color:#fff;margin-bottom:4px;}
+.res-loc p{font-size:12px;color:var(--muted);font-family:monospace;}
+
+#btn-reset{
+  padding:10px 22px;border-radius:10px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:13px;transition:all .25s;
+}
+#btn-reset:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* overall risk banner */
+.overall-banner{
+  border-radius:14px;padding:14px 20px;margin-bottom:28px;
+  border:1px solid;display:flex;align-items:center;gap:14px;
+  transition:all .4s;
+}
+.overall-banner .ob-icon{font-size:28px;}
+.overall-banner .ob-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.7;}
+.overall-banner .ob-text{font-size:16px;font-weight:600;}
+
+/* disaster cards */
+.cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
+@media(max-width:680px){.cards-row{grid-template-columns:1fr;}}
+
+.dcard{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;
+  transition:border-color .4s,box-shadow .4s;
+}
+.dcard-title{font-size:13px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);}
+.dcard-icon{font-size:28px;margin-bottom:2px;}
+
+/* SVG gauge */
+.gauge-wrap{position:relative;width:110px;height:110px;}
+.gauge-wrap svg{width:110px;height:110px;}
+.gauge-bg{fill:none;stroke:var(--border);stroke-width:9;}
+.gauge-arc{fill:none;stroke-width:9;stroke-linecap:round;
+  stroke-dasharray:282.74;stroke-dashoffset:282.74;
+  transform:rotate(-90deg);transform-origin:55px 55px;
+  transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),stroke .4s;}
+.gauge-pct{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:20px;font-weight:800;color:#fff;
+}
+
+.risk-badge{
+  padding:5px 16px;border-radius:20px;font-size:11px;font-weight:700;
+  letter-spacing:1.2px;text-transform:uppercase;border:1px solid;
+}
+.dcard-why{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;min-height:36px;}
+
+/* recommendation card */
+.rec-card{
+  background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:22px 24px;
+}
+.rec-card h3{font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+.rec-body{display:flex;align-items:flex-start;gap:14px;}
+.rec-icon{font-size:30px;flex-shrink:0;}
+.rec-text{font-size:14px;line-height:1.65;color:var(--text);}
+.rec-action{
+  display:inline-block;margin-top:10px;padding:7px 18px;border-radius:8px;
+  font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  border:none;cursor:pointer;font-family:'Inter',sans-serif;
+}
+
+/* colour helpers applied by JS */
+.col-safe    {color:var(--safe);}
+.col-moderate{color:var(--moderate);}
+.col-warning {color:var(--warning);}
+.col-danger  {color:var(--danger);}
+</style>
+</head>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 1 — MAP SELECTION
+════════════════════════════════════════════════════════ -->
+<body>
+<div id="screen-map" class="screen active">
+  <header>
+    <span class="logo-icon">🛰️</span>
+    <span class="logo-text">DisasterAI</span>
+    <span class="logo-sub">India · Real-Time Risk Prediction</span>
+  </header>
+  <div id="map"></div>
+  <div id="location-panel">
+    <div class="loc-info">
+      <div class="loc-placeholder" id="loc-placeholder">Click anywhere on the map to select a location</div>
+      <div id="loc-detail" style="display:none">
+        <div class="loc-name" id="loc-name">—</div>
+        <div class="loc-coords" id="loc-coords">—</div>
+      </div>
+    </div>
+    <button id="btn-analyze" onclick="startAnalysis()">Analyze Risk →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 2 — LOADER
+════════════════════════════════════════════════════════ -->
+<div id="screen-loader" class="screen">
+  <div class="solar-system">
+    <div class="ring"></div><div class="ring"></div>
+    <div class="ring"></div><div class="ring"></div>
+    <div class="planet"></div>
+    <div class="orbit-track"><div class="satellite">🛰️</div></div>
+  </div>
+  <div class="loader-steps">
+    <div class="step-text" id="step-text">Initialising scan…</div>
+    <div class="step-bar-wrap"><div class="step-bar" id="step-bar"></div></div>
+    <div class="step-sub" id="step-sub">DisasterAI Hybrid Model • LSTM + XGBoost</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 3 — RESULTS
+════════════════════════════════════════════════════════ -->
+<div id="screen-results" class="screen">
+  <div class="results-wrap">
+    <div class="res-header">
+      <div class="res-loc">
+        <h2 id="res-locname">Location</h2>
+        <p id="res-coords">—</p>
+      </div>
+      <button id="btn-reset" onclick="resetToMap()">← Scan New Location</button>
+    </div>
+
+    <!-- overall banner -->
+    <div class="overall-banner" id="overall-banner">
+      <span class="ob-icon" id="ob-icon">—</span>
+      <div>
+        <div class="ob-label">Overall Risk Assessment</div>
+        <div class="ob-text" id="ob-text">—</div>
+      </div>
+    </div>
+
+    <!-- three disaster cards -->
+    <div class="cards-row">
+      <!-- Flood -->
+      <div class="dcard" id="card-flood">
+        <div class="dcard-icon">🌊</div>
+        <div class="dcard-title">Flash Flood</div>
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 110 110">
+            <circle class="gauge-bg" cx="55" cy="55" r="45"/>
+            <circle class="gauge-arc" id="arc-flood" cx="55" cy="55" r="45"/>
+          </svg>
+          <div class="gauge-pct" id="pct-flood">0%</div>
+        </div>
+        <div class="risk-badge" id="badge-flood">—</div>
+        <div class="dcard-why" id="why-flood">—</div>
+      </div>
+      <!-- Landslide -->
+      <div class="dcard" id="card-landslide">
+        <div class="dcard-icon">⛰️</div>
+        <div class="dcard-title">Landslide</div>
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 110 110">
+            <circle class="gauge-bg" cx="55" cy="55" r="45"/>
+            <circle class="gauge-arc" id="arc-landslide" cx="55" cy="55" r="45"/>
+          </svg>
+          <div class="gauge-pct" id="pct-landslide">0%</div>
+        </div>
+        <div class="risk-badge" id="badge-landslide">—</div>
+        <div class="dcard-why" id="why-landslide">—</div>
+      </div>
+      <!-- Cyclone -->
+      <div class="dcard" id="card-cyclone">
+        <div class="dcard-icon">🌀</div>
+        <div class="dcard-title">Cyclone</div>
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 110 110">
+            <circle class="gauge-bg" cx="55" cy="55" r="45"/>
+            <circle class="gauge-arc" id="arc-cyclone" cx="55" cy="55" r="45"/>
+          </svg>
+          <div class="gauge-pct" id="pct-cyclone">0%</div>
+        </div>
+        <div class="risk-badge" id="badge-cyclone">—</div>
+        <div class="dcard-why" id="why-cyclone">—</div>
+      </div>
+    </div>
+
+    <!-- recommendation -->
+    <div class="rec-card">
+      <h3>AI Recommendation</h3>
+      <div class="rec-body">
+        <div class="rec-icon" id="rec-icon">💡</div>
+        <div>
+          <div class="rec-text" id="rec-text">—</div>
+          <button class="rec-action" id="rec-action-btn" onclick="resetToMap()">Scan Another</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// LEAFLET MAP SETUP
+// ═══════════════════════════════════════════════════════════
+const map = L.map('map', {
+  center: [22.5, 82.0],
+  zoom: 5,
+  minZoom: 4,
+  maxZoom: 13,
+  zoomControl: true,
+  attributionControl: false,
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd', maxZoom: 19,
+}).addTo(map);
+
+// India bounds restriction (soft)
+const INDIA_BOUNDS = L.latLngBounds([6.5, 67.0], [37.5, 98.0]);
+map.setMaxBounds(INDIA_BOUNDS.pad(0.3));
+
+// Custom pulsing icon
+const pinIcon = L.divIcon({
+  className: '',
+  html: '<div class="pin-pulse"></div>',
+  iconSize: [16,16], iconAnchor: [8,8],
+});
+
+let marker = null;
+let selectedLat = null, selectedLon = null, selectedName = '';
+let pendingResult = null;
+
+map.on('click', async e => {
+  const {lat, lng} = e.latlng;
+  if (!INDIA_BOUNDS.contains(e.latlng)) return;
+
+  selectedLat = lat; selectedLon = lng;
+
+  if (marker) marker.remove();
+  marker = L.marker([lat, lng], {icon: pinIcon}).addTo(map);
+
+  document.getElementById('loc-placeholder').style.display = 'none';
+  document.getElementById('loc-detail').style.display = 'block';
+  document.getElementById('loc-coords').textContent =
+    `${lat.toFixed(4)}° N  ${lng.toFixed(4)}° E`;
+  document.getElementById('loc-name').textContent = 'Fetching location…';
+
+  const btn = document.getElementById('btn-analyze');
+  btn.classList.add('ready');
+
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
+      {headers:{'User-Agent':'DisasterAI/1.0'}}
+    );
+    const d = await r.json();
+    const addr = d.address || {};
+    selectedName = addr.city || addr.town || addr.village ||
+                   addr.county || addr.state_district || addr.state || 'Selected Location';
+    document.getElementById('loc-name').textContent = selectedName;
+    marker.bindPopup(`<b>${selectedName}</b><br>${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`).openPopup();
+  } catch {
+    selectedName = 'Selected Location';
+    document.getElementById('loc-name').textContent = selectedName;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// RISK UTILITIES
+// ═══════════════════════════════════════════════════════════
+const RISK = {
+  safe:     {level:'SAFE',     col:'#00e676', bg:'rgba(0,230,118,.09)', cls:'col-safe'},
+  moderate: {level:'MODERATE', col:'#ff9800', bg:'rgba(255,152,0,.09)', cls:'col-moderate'},
+  warning:  {level:'WARNING',  col:'#ffeb3b', bg:'rgba(255,235,59,.09)', cls:'col-warning'},
+  danger:   {level:'DANGER',   col:'#ff1744', bg:'rgba(255,23,68,.09)',  cls:'col-danger'},
+};
+function riskFor(p) {
+  if (p < 0.45) return RISK.safe;       // below training threshold → SAFE
+  if (p < 0.62) return RISK.moderate;
+  if (p < 0.80) return RISK.warning;
+  return RISK.danger;
+}
+function emojiFor(r) {
+  return {SAFE:'✅',MODERATE:'🟠',WARNING:'⚠️',DANGER:'🚨'}[r.level];
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOADER ANIMATION
+// ═══════════════════════════════════════════════════════════
+const STEPS = [
+  {txt:'Pinging satellites…',         pct:15},
+  {txt:'Fetching terrain elevation…', pct:30},
+  {txt:'Reading river gauge levels…', pct:45},
+  {txt:'Analysing weather patterns…', pct:60},
+  {txt:'Running LSTM encoder…',       pct:75},
+  {txt:'XGBoost classification…',     pct:88},
+  {txt:'Generating risk report…',     pct:100},
+];
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function runLoader() {
+  const bar  = document.getElementById('step-bar');
+  const txt  = document.getElementById('step-text');
+  bar.style.width = '0%';
+  for (const s of STEPS) {
+    txt.textContent = s.txt;
+    bar.style.width  = s.pct + '%';
+    await sleep(480);
+  }
+  await sleep(300);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIN FLOW
+// ═══════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function startAnalysis() {
+  if (!selectedLat) return;
+  showScreen('screen-loader');
+
+  // Fire API + loader in parallel; wait for both
+  const [data] = await Promise.all([
+    fetch('/predict', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({lat:selectedLat, lon:selectedLon, name:selectedName}),
+    }).then(r=>r.json()),
+    runLoader(),
+  ]);
+
+  if (data.error) {
+    alert(data.error);
+    showScreen('screen-map');
+    return;
+  }
+  displayResults(data);
+  showScreen('screen-results');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESULTS DISPLAY
+// ═══════════════════════════════════════════════════════════
+const CIRC = 2 * Math.PI * 45;  // circumference for r=45
+
+function animateGauge(arcId, pctId, prob, color) {
+  const arc = document.getElementById(arcId);
+  const pct = document.getElementById(pctId);
+  arc.style.stroke = color;
+  const target = CIRC * (1 - prob);
+  // animate
+  let current = CIRC;
+  const step  = (CIRC - target) / 60;
+  let count   = 0;
+  const timer = setInterval(()=>{
+    count++;
+    pct.textContent = Math.round(prob * count / 60 * 100) + '%';
+    current -= step;
+    if (count >= 60){ current = target; pct.textContent = Math.round(prob*100)+'%'; clearInterval(timer); }
+    arc.style.strokeDashoffset = current;
+  }, 16);
+}
+
+function styleCard(cardId, risk) {
+  const card = document.getElementById(cardId);
+  card.style.borderColor = risk.col;
+  card.style.boxShadow   = `0 0 20px ${risk.col}22`;
+}
+function styleBadge(badgeId, risk) {
+  const b = document.getElementById(badgeId);
+  b.textContent = risk.level;
+  b.style.color  = risk.col;
+  b.style.borderColor = risk.col;
+  b.style.background  = risk.bg;
+}
+
+function displayResults(data) {
+  // header
+  document.getElementById('res-locname').textContent = data.name;
+  document.getElementById('res-coords').textContent  =
+    `${data.lat}° N  ${data.lon}° E`;
+
+  const rF = riskFor(data.flood);
+  const rL = riskFor(data.landslide);
+  const rC = riskFor(data.cyclone);
+
+  // gauges + cards
+  [
+    ['flood',     data.flood,     rF, data.factors.flood],
+    ['landslide', data.landslide, rL, data.factors.landslide],
+    ['cyclone',   data.cyclone,   rC, data.factors.cyclone],
+  ].forEach(([key, prob, risk, why])=>{
+    animateGauge(`arc-${key}`, `pct-${key}`, prob, risk.col);
+    styleCard(`card-${key}`, risk);
+    styleBadge(`badge-${key}`, risk);
+    document.getElementById(`why-${key}`).textContent = why;
+  });
+
+  // overall
+  const maxP  = Math.max(data.flood, data.landslide, data.cyclone);
+  const maxR  = riskFor(maxP);
+  const banner = document.getElementById('overall-banner');
+  banner.style.borderColor   = maxR.col;
+  banner.style.background    = maxR.bg;
+  document.getElementById('ob-icon').textContent = emojiFor(maxR);
+  document.getElementById('ob-text').textContent = overallText(maxR, data);
+  document.getElementById('ob-text').style.color = maxR.col;
+
+  // recommendation
+  applyRecommendation(maxR, maxP, data);
+}
+
+function overallText(risk, data) {
+  const hazards = [];
+  if (data.flood     >= 0.50) hazards.push('Flood');
+  if (data.landslide >= 0.50) hazards.push('Landslide');
+  if (data.cyclone   >= 0.50) hazards.push('Cyclone');
+  if (hazards.length === 0)   return 'No significant hazards detected at this location.';
+  return `Elevated ${hazards.join(' & ')} risk detected at ${data.name}.`;
+}
+
+function applyRecommendation(risk, maxP, data) {
+  const RECS = {
+    SAFE:     {icon:'✅', text:'Current conditions show minimal disaster risk. Enjoy your day while staying informed via IMD alerts.', action:'All Clear', col:'#00e676'},
+    MODERATE: {icon:'📡', text:'Moderate risk detected. Keep emergency supplies ready and monitor local weather authority (IMD) advisories.', action:'Monitor Closely', col:'#ff9800'},
+    WARNING:  {icon:'⚠️',  text:'Elevated risk levels. Review your evacuation plan, avoid risky zones, and stay tuned to official alerts.', action:'Prepare Now', col:'#ffeb3b'},
+    DANGER:   {icon:'🚨', text:'CRITICAL: Immediate action required. Contact local emergency services and evacuate if advised by authorities.', action:'Evacuate Now', col:'#ff1744'},
+  };
+  const rec = RECS[risk.level];
+  document.getElementById('rec-icon').textContent = rec.icon;
+  document.getElementById('rec-text').textContent = rec.text;
+  const btn = document.getElementById('rec-action-btn');
+  btn.textContent = rec.action;
+  btn.style.background   = rec.col;
+  btn.style.color        = risk.level === 'WARNING' ? '#000' : '#fff';
+}
+
+function resetToMap() {
+  showScreen('screen-map');
+}
+</script>
+</body>
+</html>
