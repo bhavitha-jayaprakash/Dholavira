@@ -1,0 +1,47 @@
+{
+    "dataset": {
+        "total_records": 10000,
+        "train_records": 8000,
+        "test_records": 2000,
+        "split": "80/20",
+        "baseline_origins": 35
+    },
+    "disasters": {
+        "Flood": {
+            "True_Positive": 1010,
+            "True_Negative": 950,
+            "False_Positive": 6,
+            "False_Negative": 34,
+            "Accuracy_Pct": 98.0,
+            "Precision_Pct": 99.41,
+            "Recall_Pct": 96.74,
+            "F1_Score": 0.981,
+            "Support_Positive": 1044,
+            "Support_Negative": 956
+        },
+        "Landslide": {
+            "True_Positive": 319,
+            "True_Negative": 1681,
+            "False_Positive": 0,
+            "False_Negative": 0,
+            "Accuracy_Pct": 100.0,
+            "Precision_Pct": 100.0,
+            "Recall_Pct": 100.0,
+            "F1_Score": 1.0,
+            "Support_Positive": 319,
+            "Support_Negative": 1681
+        },
+        "Cyclone": {
+            "True_Positive": 146,
+            "True_Negative": 1854,
+            "False_Positive": 0,
+            "False_Negative": 0,
+            "Accuracy_Pct": 100.0,
+            "Precision_Pct": 100.0,
+            "Recall_Pct": 100.0,
+            "F1_Score": 1.0,
+            "Support_Positive": 146,
+            "Support_Negative": 1854
+        }
+    }
+}
